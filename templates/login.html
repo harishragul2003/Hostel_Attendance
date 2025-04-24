@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .login-container {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(129, 140, 248, 0.1) 100%);
+        border-radius: 20px;
+        margin: -1.5rem;
+        padding: 1.5rem;
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        max-width: 400px;
+        width: 100%;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .login-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .login-header {
+        text-align: center;
+        padding: 2rem 2rem 1rem;
+    }
+
+    .login-header h1 {
+        color: var(--primary-color);
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-header p {
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+
+    .login-form {
+        padding: 1.5rem 2rem 2rem;
+    }
+
+    .form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border: none;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-outline-secondary {
+        border: 2px solid #e5e7eb;
+        color: #4b5563;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #1f2937;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1>
+                <i class="fas fa-sign-in-alt me-2"></i>
+                Login
+            </h1>
+            <p>Sign in to your account</p>
+        </div>
+        <div class="login-form">
+            <form method="POST">
+                <div class="mb-4">
+                    <label for="username" class="form-label">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0">
+                            <i class="fas fa-user text-muted"></i>
+                        </span>
+                        <input type="text" class="form-control border-start-0 ps-0" 
+                               id="username" name="username" required autofocus 
+                               placeholder="Enter your username">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0">
+                            <i class="fas fa-lock text-muted"></i>
+                        </span>
+                        <input type="password" class="form-control border-start-0 ps-0" 
+                               id="password" name="password" required
+                               placeholder="Enter your password">
+                    </div>
+                </div>
+                <div class="d-grid gap-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </button>
+                    <a href="{{ url_for('register') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-user-plus me-2"></i>Register New Account
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

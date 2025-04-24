@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .welcome-card {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transform: translateY(0);
+        transition: all 0.3s ease;
+    }
+
+    .welcome-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .welcome-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        background: rgba(255,255,255,0.2);
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .attendance-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+
+    .attendance-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+
+    .meal-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: var(--primary-color);
+    }
+
+    .meal-status {
+        padding: 1rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+    }
+
+    .meal-status.text-success {
+        background: rgba(25, 135, 84, 0.1);
+    }
+
+    .meal-status.text-danger {
+        background: rgba(220, 53, 69, 0.1);
+    }
+
+    .meal-status i {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .meal-time {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    @keyframes pulseIcon {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .animate-icon {
+        animation: pulseIcon 2s infinite;
+    }
+
+    .btn {
+        border-radius: 10px;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn i {
+        transition: transform 0.3s ease;
+    }
+
+    .btn:hover i {
+        transform: scale(1.1);
+    }
+</style>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card welcome-card">
+            <div class="card-body text-center">
+                <div class="welcome-icon mx-auto">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <h5 class="card-title">Welcome, {{ current_user.name }}!</h5>
+                <p class="card-text">
+                    <i class="fas fa-home me-2"></i>Room {{ current_user.room_number }}<br>
+                    <i class="fas fa-calendar me-2"></i>{{ datetime.now().strftime('%Y-%m-%d') }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Meal Selection -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-utensils me-2"></i>Today's Meal Selection
+                </h5>
+                {% set today = datetime.now().date() %}
+                {% set today_attendance = week_attendance|selectattr('date', 'equalto', today)|first %}
+                
+                {% if today_attendance and today_attendance.leave_status %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-plane-departure me-2 animate-icon"></i>You are marked on leave for today.
+                        <form method="POST" action="{{ url_for('cancel_leave') }}" class="d-inline ms-2">
+                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-undo me-1"></i>Cancel Leave
+                            </button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="row">
+                        <!-- Breakfast Card -->
+                        <div class="col-md-4">
+                            <div class="card attendance-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="meal-icon">
+                                        <i class="fas fa-coffee"></i>
+                                    </div>
+                                    <h5 class="card-title">Breakfast</h5>
+                                    {% set breakfast_schedule = schedules|selectattr('meal_type', 'equalto', 'breakfast')|first %}
+                                    {% if breakfast_schedule %}
+                                    <p class="card-text meal-time">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ format_time(breakfast_schedule.start_time) }} - 
+                                        {{ format_time(breakfast_schedule.end_time) }}
+                                    </p>
+                                    {% endif %}
+                                    {% if today_attendance and today_attendance.breakfast %}
+                                        <div class="meal-status text-success">
+                                            <i class="fas fa-check-circle animate-icon"></i>
+                                            <div class="fw-bold">Present</div>
+                                            <small>
+                                                <i class="far fa-clock me-1"></i>
+                                                {{ format_time(today_attendance.breakfast_time) }}
+                                            </small>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('mark_attendance') }}">
+                                            <input type="hidden" name="meal" value="breakfast">
+                                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                                            <input type="hidden" name="action" value="unmark">
+                                            <button type="submit" class="btn btn-outline-danger">
+                                                <i class="fas fa-times me-1"></i>Unmark
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <div class="meal-status text-danger">
+                                            <i class="fas fa-times-circle"></i>
+                                            <div class="fw-bold">Not Marked</div>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('mark_attendance') }}">
+                                            <input type="hidden" name="meal" value="breakfast">
+                                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                                            <button type="submit" class="btn btn-outline-success">
+                                                <i class="fas fa-check me-1"></i>Mark Present
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lunch Card -->
+                        <div class="col-md-4">
+                            <div class="card attendance-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="meal-icon">
+                                        <i class="fas fa-hamburger"></i>
+                                    </div>
+                                    <h5 class="card-title">Lunch</h5>
+                                    {% set lunch_schedule = schedules|selectattr('meal_type', 'equalto', 'lunch')|first %}
+                                    {% if lunch_schedule %}
+                                    <p class="card-text meal-time">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ format_time(lunch_schedule.start_time) }} - 
+                                        {{ format_time(lunch_schedule.end_time) }}
+                                    </p>
+                                    {% endif %}
+                                    {% if today_attendance and today_attendance.lunch %}
+                                        <div class="meal-status text-success">
+                                            <i class="fas fa-check-circle animate-icon"></i>
+                                            <div class="fw-bold">Present</div>
+                                            <small>
+                                                <i class="far fa-clock me-1"></i>
+                                                {{ format_time(today_attendance.lunch_time) }}
+                                            </small>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('mark_attendance') }}">
+                                            <input type="hidden" name="meal" value="lunch">
+                                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                                            <input type="hidden" name="action" value="unmark">
+                                            <button type="submit" class="btn btn-outline-danger">
+                                                <i class="fas fa-times me-1"></i>Unmark
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <div class="meal-status text-danger">
+                                            <i class="fas fa-times-circle"></i>
+                                            <div class="fw-bold">Not Marked</div>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('mark_attendance') }}">
+                                            <input type="hidden" name="meal" value="lunch">
+                                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                                            <button type="submit" class="btn btn-outline-success">
+                                                <i class="fas fa-check me-1"></i>Mark Present
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dinner Card -->
+                        <div class="col-md-4">
+                            <div class="card attendance-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="meal-icon">
+                                        <i class="fas fa-utensils"></i>
+                                    </div>
+                                    <h5 class="card-title">Dinner</h5>
+                                    {% set dinner_schedule = schedules|selectattr('meal_type', 'equalto', 'dinner')|first %}
+                                    {% if dinner_schedule %}
+                                    <p class="card-text meal-time">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ format_time(dinner_schedule.start_time) }} - 
+                                        {{ format_time(dinner_schedule.end_time) }}
+                                    </p>
+                                    {% endif %}
+                                    {% if today_attendance and today_attendance.dinner %}
+                                        <div class="meal-status text-success">
+                                            <i class="fas fa-check-circle animate-icon"></i>
+                                            <div class="fw-bold">Present</div>
+                                            <small>
+                                                <i class="far fa-clock me-1"></i>
+                                                {{ format_time(today_attendance.dinner_time) }}
+                                            </small>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('mark_attendance') }}">
+                                            <input type="hidden" name="meal" value="dinner">
+                                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                                            <input type="hidden" name="action" value="unmark">
+                                            <button type="submit" class="btn btn-outline-danger">
+                                                <i class="fas fa-times me-1"></i>Unmark
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <div class="meal-status text-danger">
+                                            <i class="fas fa-times-circle"></i>
+                                            <div class="fw-bold">Not Marked</div>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('mark_attendance') }}">
+                                            <input type="hidden" name="meal" value="dinner">
+                                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                                            <button type="submit" class="btn btn-outline-success">
+                                                <i class="fas fa-check me-1"></i>Mark Present
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Apply Leave Button -->
+                    <div class="text-center mt-4">
+                        <form method="POST" action="{{ url_for('apply_leave') }}" class="d-inline">
+                            <input type="hidden" name="date" value="{{ today.strftime('%Y-%m-%d') }}">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-plane-departure me-2"></i>Mark Leave for Today
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Previous Attendance -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-history me-2"></i>Previous Attendance
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>
+                                    <i class="fas fa-calendar-alt me-2"></i>Date
+                                </th>
+                                <th class="text-center">
+                                    <i class="fas fa-coffee me-2"></i>Breakfast
+                                </th>
+                                <th class="text-center">
+                                    <i class="fas fa-hamburger me-2"></i>Lunch
+                                </th>
+                                <th class="text-center">
+                                    <i class="fas fa-utensils me-2"></i>Dinner
+                                </th>
+                                <th class="text-center">
+                                    <i class="fas fa-info-circle me-2"></i>Status
+                                </th>
+                                <th class="text-end">
+                                    <i class="fas fa-rupee-sign me-2"></i>Cost
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(1, 7) %}
+                            {% set current_date = datetime.now().date() - timedelta(days=i) %}
+                            {% set day_attendance = week_attendance|selectattr('date', 'equalto', current_date)|first %}
+                            <tr class="attendance-row">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="date-box text-center me-3">
+                                            <div class="date-month">{{ current_date.strftime('%b') }}</div>
+                                            <div class="date-day">{{ current_date.strftime('%d') }}</div>
+                                        </div>
+                                        <div class="date-weekday">
+                                            {{ current_date.strftime('%A') }}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% if day_attendance and day_attendance.breakfast %}
+                                        <div class="meal-badge present" title="Marked at {{ format_time(day_attendance.breakfast_time) if day_attendance.breakfast_time }}">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                    {% else %}
+                                        <div class="meal-badge absent">
+                                            <i class="fas fa-times"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if day_attendance and day_attendance.lunch %}
+                                        <div class="meal-badge present" title="Marked at {{ format_time(day_attendance.lunch_time) if day_attendance.lunch_time }}">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                    {% else %}
+                                        <div class="meal-badge absent">
+                                            <i class="fas fa-times"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if day_attendance and day_attendance.dinner %}
+                                        <div class="meal-badge present" title="Marked at {{ format_time(day_attendance.dinner_time) if day_attendance.dinner_time }}">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                    {% else %}
+                                        <div class="meal-badge absent">
+                                            <i class="fas fa-times"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if day_attendance and day_attendance.leave_status %}
+                                        <span class="status-badge leave">
+                                            <i class="fas fa-plane-departure me-1"></i>On Leave
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge present">
+                                            <i class="fas fa-check me-1"></i>Present
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <span class="cost-badge">
+                                        ₹{{ "%.2f"|format(day_attendance.daily_cost if day_attendance else 0) }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #4b5563;
+        border-bottom-width: 2px;
+    }
+
+    .attendance-row {
+        transition: all 0.2s ease;
+    }
+
+    .attendance-row:hover {
+        background-color: rgba(var(--primary-color-rgb), 0.05);
+    }
+
+    .date-box {
+        background: #f3f4f6;
+        border-radius: 8px;
+        padding: 4px 8px;
+        min-width: 60px;
+    }
+
+    .date-month {
+        font-size: 0.8rem;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+
+    .date-day {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .date-weekday {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .meal-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+
+    .meal-badge.present {
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #198754;
+    }
+
+    .meal-badge.absent {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .meal-badge:hover {
+        transform: scale(1.1);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .status-badge.present {
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #198754;
+    }
+
+    .status-badge.leave {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+
+    .cost-badge {
+        background: #f3f4f6;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        color: #374151;
+    }
+</style>
+{% endblock %}

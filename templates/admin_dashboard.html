@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-end">
+            <a href="{{ url_for('meal_schedule') }}" class="btn btn-primary">
+                <i class="fas fa-clock me-2"></i>Manage Meal Schedules
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card stats-card">
+            <div class="card-body">
+                <h5 class="card-title">Today's Statistics</h5>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h3>{{ attendance|selectattr('breakfast')|list|length }}</h3>
+                        <small>Breakfast</small>
+                    </div>
+                    <div class="col-4">
+                        <h3>{{ attendance|selectattr('lunch')|list|length }}</h3>
+                        <small>Lunch</small>
+                    </div>
+                    <div class="col-4">
+                        <h3>{{ attendance|selectattr('dinner')|list|length }}</h3>
+                        <small>Dinner</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card">
+            <div class="card-body">
+                <h5 class="card-title">Leave Status</h5>
+                <div class="text-center">
+                    <h3>{{ attendance|selectattr('leave_status')|list|length }}</h3>
+                    <small>Students on Leave Today</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card">
+            <div class="card-body">
+                <h5 class="card-title">Total Students</h5>
+                <div class="text-center">
+                    <h3>{{ students|length }}</h3>
+                    <small>Registered Students</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Today's Attendance Overview</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Room</th>
+                                <th>Breakfast</th>
+                                <th>Lunch</th>
+                                <th>Dinner</th>
+                                <th>Leave Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            {% set student_attendance = attendance|selectattr('user_id', 'equalto', student.id)|first %}
+                            <tr>
+                                <td>{{ student.name }}</td>
+                                <td>{{ student.room_number }}</td>
+                                <td>
+                                    {% if student_attendance and student_attendance.breakfast %}
+                                    <span class="text-success"><i class="fas fa-check"></i></span>
+                                    {% else %}
+                                    <span class="text-danger"><i class="fas fa-times"></i></span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if student_attendance and student_attendance.lunch %}
+                                    <span class="text-success"><i class="fas fa-check"></i></span>
+                                    {% else %}
+                                    <span class="text-danger"><i class="fas fa-times"></i></span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if student_attendance and student_attendance.dinner %}
+                                    <span class="text-success"><i class="fas fa-check"></i></span>
+                                    {% else %}
+                                    <span class="text-danger"><i class="fas fa-times"></i></span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if student_attendance and student_attendance.leave_status %}
+                                    <span class="badge bg-warning">On Leave</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Available</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

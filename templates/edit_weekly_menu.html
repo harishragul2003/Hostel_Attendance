@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Edit Weekly Menu Entry</h5>
+                <form method="POST" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="day" class="form-label">Day</label>
+                        <select class="form-select" id="day" name="day" required>
+                            {% for d in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"] %}
+                            <option value="{{ d }}" {% if entry.day == d %}selected{% endif %}>{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="meal_type" class="form-label">Meal Type</label>
+                        <select class="form-select" id="meal_type" name="meal_type" required>
+                            {% for m in ["breakfast","lunch","dinner"] %}
+                            <option value="{{ m }}" {% if entry.meal_type == m %}selected{% endif %}>{{ m.title() }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" value="{{ entry.description }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="cost" class="form-label">Cost</label>
+                        <input type="number" step="0.01" class="form-control" id="cost" name="cost" value="{{ entry.cost }}" required>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Update</button>
+                        <a href="{{ url_for('weekly_menu') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
