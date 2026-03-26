@@ -7,7 +7,9 @@ from sqlalchemy import case
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
-DB_PATH = os.path.join(BASE_DIR, 'hostel.db')
+
+# Use /tmp for Render (writable), fallback to local for dev
+DB_PATH = os.environ.get('DB_PATH', '/tmp/hostel.db')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
