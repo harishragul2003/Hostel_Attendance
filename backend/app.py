@@ -8,12 +8,15 @@ from sqlalchemy import case
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
 
-# Use /tmp for Render (writable), fallback to local for dev
-DB_PATH = os.environ.get('DB_PATH', '/tmp/hostel.db')
+# Use DATABASE_URL from environment (PostgreSQL on Render), fallback to SQLite locally
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:////tmp/hostel.db')
+# Render gives postgres:// but SQLAlchemy needs postgresql://
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + DB_PATH
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
