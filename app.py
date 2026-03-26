@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime, timedelta, time
+from sqlalchemy import case
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'  # Change this to a secure key in production
@@ -24,8 +25,10 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # 'admin' or 'student'
+    role = db.Column(db.String(20), nullable=False, default='student')  # 'admin' or 'student'
     name = db.Column(db.String(120), nullable=False)
+    department = db.Column(db.String(50), nullable=False, default='General')
+    year = db.Column(db.Integer, nullable=False, default=1)
     room_number = db.Column(db.String(10), nullable=False)
     total_bill = db.Column(db.Float, default=0.0)
     last_bill_date = db.Column(db.DateTime)
@@ -78,15 +81,25 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Prevent caching of the login page
+    response = make_response()
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
         user = User.query.filter_by(username=username).first()
         if user and user.password == password:  # In production, use proper password hashing
             login_user(user)
             return redirect(url_for('dashboard'))
         flash('Invalid username or password')
-    return render_template('login.html')
+        return redirect(url_for('login'))
+    
+    # Clear the form data
+    response.data = render_template('login.html')
+    return response
 
 @app.route('/logout')
 @login_required
@@ -112,9 +125,38 @@ def dashboard():
         Attendance.date <= today
     ).order_by(Attendance.date.desc()).all()
 
+    # Calculate total meals this month
+    first_day_of_month = today.replace(day=1)
+    monthly_attendance = Attendance.query.filter(
+        Attendance.user_id == current_user.id,
+        Attendance.date >= first_day_of_month,
+        Attendance.date <= today
+    ).all()
+    
+    # Count meals for the current month
+    breakfast_count = sum(1 for att in monthly_attendance if att.breakfast)
+    lunch_count = sum(1 for att in monthly_attendance if att.lunch)
+    dinner_count = sum(1 for att in monthly_attendance if att.dinner)
+    
+    # Get meal costs
+    meal_costs = {s.meal_type: s.cost for s in schedules}
+    
+    # Calculate total cost for the month
+    total_cost = (
+        (breakfast_count * meal_costs.get('breakfast', 0)) +
+        (lunch_count * meal_costs.get('lunch', 0)) +
+        (dinner_count * meal_costs.get('dinner', 0))
+    )
+    
     return render_template('student_dashboard.html', 
                          schedules=schedules,
-                         week_attendance=week_attendance)
+                         week_attendance=week_attendance,
+                         total_bill=current_user.total_bill,
+                         breakfast_count=breakfast_count,
+                         lunch_count=lunch_count,
+                         dinner_count=dinner_count,
+                         monthly_cost=total_cost,
+                         meal_costs=meal_costs)
 
 @app.route('/admin_dashboard')
 @login_required
@@ -126,15 +168,51 @@ def admin_dashboard():
     # Get today's date
     today = datetime.now().date()
     
-    # Get all students
-    students = User.query.filter_by(role='student').all()
+    # Get all students grouped by department
+    departments = {}
+    students = User.query.filter_by(role='student').order_by(User.department, User.name).all()
+    
+    # Group students by department
+    for student in students:
+        if student.department not in departments:
+            departments[student.department] = []
+        departments[student.department].append(student)
     
     # Get today's attendance records
-    attendance = Attendance.query.filter_by(date=today).all()
+    attendance = {}
+    today_attendance = Attendance.query.filter_by(date=today).all()
+    
+    # Count meal attendance
+    breakfast_count = sum(1 for att in today_attendance if att.breakfast)
+    lunch_count = sum(1 for att in today_attendance if att.lunch)
+    dinner_count = sum(1 for att in today_attendance if att.dinner)
+    
+    for att in today_attendance:
+        attendance[att.user_id] = att
+    
+    # Get available departments for filter
+    all_departments = [dept[0] for dept in db.session.query(User.department).distinct().all() if dept[0]]
     
     return render_template('admin_dashboard.html', 
-                         students=students,
-                         attendance=attendance)
+                         departments=departments,
+                         attendance=attendance,
+                         today=today,
+                         all_departments=all_departments,
+                         breakfast_count=breakfast_count,
+                         lunch_count=lunch_count,
+                         dinner_count=dinner_count,
+                         total_students=len(students))
+
+@app.route('/leave_list')
+@login_required
+def leave_list():
+    # Admin-only leave list page
+    if current_user.role != 'admin':
+        flash('Access denied')
+        return redirect(url_for('dashboard'))
+    today = datetime.now().date()
+    records = Attendance.query.filter_by(date=today, leave_status=True).all()
+    return render_template('leave_list.html', records=records)
 
 @app.route('/meal_schedule', methods=['GET', 'POST'])
 @login_required
@@ -302,14 +380,16 @@ def reports():
         flash('Only admin can view reports')
         return redirect(url_for('dashboard'))
 
-    students = User.query.filter_by(role='student').all()
+    # Get all students and meal schedules
+    students = User.query.filter_by(role='student').order_by(User.name).all()
+    meal_schedules = {s.meal_type: s.cost for s in MealSchedule.query.all()}
     
     # Calculate detailed statistics for each student
     for student in students:
         attendance_records = student.attendance
         
         # Initialize statistics
-        student.stats = {
+        stats = {
             'total_days': len(attendance_records),
             'breakfast_count': 0,
             'lunch_count': 0,
@@ -319,31 +399,50 @@ def reports():
             'lunch_cost': 0,
             'dinner_cost': 0,
             'total_cost': 0,
-            'avg_daily_cost': 0
+            'avg_daily_cost': 0,
+            'attendance_records': []
         }
         
-        # Calculate statistics
+        # Process each attendance record
         for record in attendance_records:
-            if record.breakfast:
-                student.stats['breakfast_count'] += 1
-                student.stats['breakfast_cost'] += MealSchedule.query.filter_by(meal_type='breakfast').first().cost
-            if record.lunch:
-                student.stats['lunch_count'] += 1
-                student.stats['lunch_cost'] += MealSchedule.query.filter_by(meal_type='lunch').first().cost
-            if record.dinner:
-                student.stats['dinner_count'] += 1
-                student.stats['dinner_cost'] += MealSchedule.query.filter_by(meal_type='dinner').first().cost
             if record.leave_status:
-                student.stats['leave_days'] += 1
+                stats['leave_days'] += 1
+            else:
+                if record.breakfast:
+                    stats['breakfast_count'] += 1
+                    stats['breakfast_cost'] += meal_schedules.get('breakfast', 0)
+                if record.lunch:
+                    stats['lunch_count'] += 1
+                    stats['lunch_cost'] += meal_schedules.get('lunch', 0)
+                if record.dinner:
+                    stats['dinner_count'] += 1
+                    stats['dinner_cost'] += meal_schedules.get('dinner', 0)
             
-            student.stats['total_cost'] += record.daily_cost
+            # Add record to detailed list
+            stats['attendance_records'].append({
+                'date': record.date,
+                'breakfast': record.breakfast,
+                'lunch': record.lunch,
+                'dinner': record.dinner,
+                'leave_status': record.leave_status,
+                'daily_cost': record.daily_cost
+            })
         
-        # Calculate average daily cost excluding leave days
-        denominator = student.stats['total_days'] - student.stats['leave_days']
-        if denominator > 0:
-            student.stats['avg_daily_cost'] = student.stats['total_cost'] / denominator
+        # Calculate totals and averages
+        stats['total_cost'] = stats['breakfast_cost'] + stats['lunch_cost'] + stats['dinner_cost']
+        
+        # Calculate average daily cost (excluding leave days)
+        days_with_meals = stats['total_days'] - stats['leave_days']
+        if days_with_meals > 0:
+            stats['avg_daily_cost'] = stats['total_cost'] / days_with_meals
         else:
-            student.stats['avg_daily_cost'] = 0
+            stats['avg_daily_cost'] = 0
+        
+        # Sort records by date (newest first)
+        stats['attendance_records'].sort(key=lambda x: x['date'], reverse=True)
+        
+        # Add stats to student object
+        student.stats = stats
     
     return render_template('reports.html', students=students)
 
@@ -429,41 +528,214 @@ def generate_report(student_id, report_type):
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
+    
+    # Define available departments and years for the form
+    departments = ['Computer Science', 'Information Technology', 'Mechanical', 'Civil', 
+                  'Electronics', 'Electrical', 'Aerospace', 'Biotechnology']
+    years = [1, 2, 3, 4]
+    
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        name = request.form['name']
-        room_number = request.form['room_number']
-        # prevent duplicate usernames
-        if User.query.filter_by(username=username).first():
-            flash('Username already exists')
-            return redirect(url_for('register'))
-        # create new student user
-        user = User(username=username, password=password, name=name, room_number=room_number, role='student')
-        db.session.add(user)
-        db.session.commit()
-        flash('Account created successfully. Please login')
-        return redirect(url_for('login'))
-    return render_template('register.html')
+        try:
+            # Get form data with proper stripping
+            form_data = {
+                'username': request.form.get('username', '').strip(),
+                'password': request.form.get('password', '').strip(),
+                'name': request.form.get('name', '').strip(),
+                'department': request.form.get('department', '').strip(),
+                'year': request.form.get('year', '1').strip(),
+                'room_number': request.form.get('room_number', '').strip().upper()  # Convert to uppercase for consistency
+            }
+            
+            print("\n=== Registration Attempt ===")
+            print("Form data received:", form_data)
+            
+            # Check for missing fields
+            missing_fields = [field for field, value in form_data.items() if not value]
+            if missing_fields:
+                error_msg = f'Missing required fields: {", ".join(missing_fields)}'
+                print(error_msg)
+                flash('All fields are required', 'error')
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            # Validate year
+            try:
+                year_int = int(form_data['year'])
+                if year_int < 1 or year_int > 4:
+                    print(f"Invalid year: {year_int}")
+                    flash('Please select a valid year (1-4)', 'error')
+                    return render_template('register.html',
+                                        departments=departments,
+                                        years=years,
+                                        form_data=form_data)
+            except ValueError:
+                print(f"Invalid year value: {form_data['year']}")
+                flash('Invalid year selected', 'error')
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            # Check room number format
+            if not all(c.isalnum() or c in ' -_' for c in form_data['room_number']):
+                print(f"Invalid room number format: {form_data['room_number']}")
+                flash('Room number can only contain letters, numbers, spaces, hyphens, and underscores', 'error')
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            # Check username availability (case-insensitive)
+            existing_user = User.query.filter(db.func.lower(User.username) == form_data['username'].strip().lower()).first()
+            if existing_user:
+                print(f"Username '{form_data['username']}' already exists (case-insensitive match with {existing_user.username})")
+                flash('This username is already taken. Please choose a different one.', 'error')
+                form_data['username'] = ''
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            # Check if name already exists (case-insensitive)
+            existing_name = User.query.filter(db.func.lower(User.name) == form_data['name'].strip().lower()).first()
+            if existing_name:
+                print(f"User with name '{form_data['name']}' already exists (case-insensitive match with {existing_name.name})")
+                flash('A user with this name is already registered. Please use a different name or contact support if this is a mistake.', 'error')
+                form_data['name'] = ''
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            # Check room number format (alphanumeric and some special chars)
+            if not all(c.isalnum() or c in ' -_' for c in form_data['room_number']):
+                print(f"Invalid room number format: {form_data['room_number']}")
+                flash('Room number can only contain letters, numbers, spaces, hyphens, and underscores', 'error')
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            # Validate year
+            try:
+                year_int = int(form_data['year'])
+                if year_int < 1 or year_int > 4:
+                    print(f"Invalid year: {year_int}")
+                    flash('Please select a valid year (1-4)', 'error')
+                    return render_template('register.html',
+                                        departments=departments,
+                                        years=years,
+                                        form_data=form_data)
+            except ValueError:
+                print(f"Invalid year value: {form_data['year']}")
+                flash('Invalid year selected', 'error')
+                return render_template('register.html',
+                                    departments=departments,
+                                    years=years,
+                                    form_data=form_data)
+            
+            print("Creating new user...")
+            # Create new user with student role by default
+            new_user = User(
+                username=form_data['username'].lower(),
+                password=form_data['password'],  # In production, use: generate_password_hash(form_data['password'])
+                name=form_data['name'].title(),
+                department=form_data['department'],
+                year=year_int,
+                room_number=form_data['room_number'].upper(),
+                role='student'
+            )
+            
+            db.session.add(new_user)
+            db.session.flush()  # This will generate the ID but not commit
+            print(f"New user created with ID: {new_user.id}")
+            
+            # Commit the transaction
+            db.session.commit()
+            print("User successfully saved to database")
+            
+            flash('Registration successful! You can now login with your credentials.', 'success')
+            # Redirect to login page after successful registration
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            error_msg = f'Registration error: {str(e)}'
+            print("\n!!! ERROR DURING REGISTRATION !!!")
+            print(error_msg)
+            print("Error type:", type(e).__name__)
+            print("Database URL:", app.config['SQLALCHEMY_DATABASE_URI'])
+            
+            # More specific error messages
+            if 'UNIQUE constraint failed' in str(e) and 'username' in str(e):
+                flash('This username is already taken. Please choose a different one.', 'error')
+            elif 'UNIQUE constraint failed' in str(e) and 'name' in str(e):
+                flash('A user with this name is already registered.', 'error')
+            else:
+                flash(f'An error occurred during registration: {str(e)}', 'error')
+            
+            # Return form with entered data
+            return render_template('register.html',
+                                departments=departments,
+                                years=years,
+                                form_data=form_data if 'form_data' in locals() else {})
+    
+    # For GET request, show empty form
+    print("Displaying registration form")
+    return render_template('register.html', 
+                         departments=departments, 
+                         years=years,
+                         form_data=request.form if request.method == 'POST' else {})
 
 @app.route('/weekly_menu', methods=['GET','POST'])
 @login_required
 def weekly_menu():
-    if current_user.role != 'admin':
-        flash('Only admin can manage weekly menu')
-        return redirect(url_for('dashboard'))
-    if request.method == 'POST':
-        day = request.form['day']
-        meal_type = request.form['meal_type']
-        description = request.form['description']
-        cost = float(request.form['cost'])
-        entry = WeeklyMenu(day=day, meal_type=meal_type, description=description, cost=cost)
-        db.session.add(entry)
-        db.session.commit()
-        flash('Weekly menu entry added')
-        return redirect(url_for('weekly_menu'))
-    menus = WeeklyMenu.query.order_by(WeeklyMenu.day, WeeklyMenu.meal_type).all()
-    return render_template('weekly_menu.html', menus=menus)
+    if current_user.role == 'admin':
+        if request.method == 'POST':
+            day = request.form['day']
+            meal_type = request.form['meal_type']
+            description = request.form['description']
+            cost = float(request.form['cost'])
+            entry = WeeklyMenu(day=day, meal_type=meal_type, description=description, cost=cost)
+            db.session.add(entry)
+            db.session.commit()
+            flash('Weekly menu entry added')
+            return redirect(url_for('weekly_menu'))
+        order_case = case({
+            'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+            'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7
+        }, value=WeeklyMenu.day, else_=8)
+        menus = WeeklyMenu.query.order_by(order_case, WeeklyMenu.meal_type).all()
+        # Load current meal schedule costs
+        schedules = MealSchedule.query.all()
+        schedule_dict = {ms.meal_type: ms.cost for ms in schedules}
+        return render_template('weekly_menu.html', menus=menus, schedules=schedule_dict)
+    elif current_user.role == 'student':
+        # Student view: weekly menu with checkboxes
+        # Group menus by weekday
+        menus = WeeklyMenu.query.all()
+        menus_by_day = {}
+        for m in menus:
+            menus_by_day.setdefault(m.day, {})[m.meal_type] = m
+        today = datetime.now().date()
+        start = today - timedelta(days=today.weekday())  # Monday
+        dates = [start + timedelta(days=i) for i in range(7)]
+        if request.method == 'POST':
+            for key in request.form:
+                if key.startswith('meal_'):
+                    _, date_str, meal = key.split('_', 2)
+                    date_val = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    attendance = Attendance.query.filter_by(user_id=current_user.id, date=date_val).first()
+                    if not attendance:
+                        attendance = Attendance(user_id=current_user.id, date=date_val)
+                        db.session.add(attendance)
+                    setattr(attendance, meal, True)
+            db.session.commit()
+            flash('Weekly attendance selected')
+            return redirect(url_for('dashboard'))
+        return render_template('student_weekly_menu.html', dates=dates, menus_by_day=menus_by_day)
 
 @app.route('/weekly_menu/edit/<int:menu_id>', methods=['GET','POST'])
 @login_required

@@ -1,5 +1,27 @@
 {% extends "base.html" %}
 
+{% block head %}
+{{ super() }}
+<script>
+    // Clear form and focus on username field when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Clear username and password fields
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        // Focus on username field
+        document.getElementById('username').focus();
+    });
+
+    // Clear form when returning to login page (handles back button case)
+    window.onpageshow = function(event) {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+    };
+</script>
+{% endblock %}
+
 {% block content %}
 <style>
     .login-container {
@@ -118,7 +140,7 @@
             <p>Sign in to your account</p>
         </div>
         <div class="login-form">
-            <form method="POST">
+            <form method="POST" id="loginForm" autocomplete="off">
                 <div class="mb-4">
                     <label for="username" class="form-label">Username</label>
                     <div class="input-group">
@@ -127,7 +149,8 @@
                         </span>
                         <input type="text" class="form-control border-start-0 ps-0" 
                                id="username" name="username" required autofocus 
-                               placeholder="Enter your username">
+                               placeholder="Enter your username" 
+                               autocomplete="new-username">
                     </div>
                 </div>
                 <div class="mb-4">
@@ -138,7 +161,8 @@
                         </span>
                         <input type="password" class="form-control border-start-0 ps-0" 
                                id="password" name="password" required
-                               placeholder="Enter your password">
+                               placeholder="Enter your password"
+                               autocomplete="new-password">
                     </div>
                 </div>
                 <div class="d-grid gap-3">

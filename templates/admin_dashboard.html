@@ -2,119 +2,199 @@
 
 {% block content %}
 <div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-end">
-            <a href="{{ url_for('meal_schedule') }}" class="btn btn-primary">
-                <i class="fas fa-clock me-2"></i>Manage Meal Schedules
+    <div class="col-md-6">
+        <h2>Attendance Dashboard</h2>
+        <p class="text-muted">{{ today.strftime('%A, %B %d, %Y') }}</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <div class="btn-group">
+            <a href="{{ url_for('meal_schedule') }}" class="btn btn-primary me-2">
+                <i class="fas fa-clock me-2"></i>Meal Schedules
+            </a>
+            <a href="{{ url_for('leave_list') }}" class="btn btn-warning">
+                <i class="fas fa-clipboard-list me-2"></i>Leave List
             </a>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-4">
-        <div class="card stats-card">
+<!-- Department Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Today's Statistics</h5>
-                <div class="row text-center">
-                    <div class="col-4">
-                        <h3>{{ attendance|selectattr('breakfast')|list|length }}</h3>
-                        <small>Breakfast</small>
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <h6 class="mb-0">Filter by Department:</h6>
                     </div>
-                    <div class="col-4">
-                        <h3>{{ attendance|selectattr('lunch')|list|length }}</h3>
-                        <small>Lunch</small>
+                    <div class="col-md-6">
+                        <select class="form-select" id="departmentFilter">
+                            <option value="">All Departments</option>
+                            {% for dept in all_departments %}
+                            <option value="{{ dept }}">{{ dept }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="col-4">
-                        <h3>{{ attendance|selectattr('dinner')|list|length }}</h3>
-                        <small>Dinner</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card stats-card">
-            <div class="card-body">
-                <h5 class="card-title">Leave Status</h5>
-                <div class="text-center">
-                    <h3>{{ attendance|selectattr('leave_status')|list|length }}</h3>
-                    <small>Students on Leave Today</small>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card stats-card">
-            <div class="card-body">
-                <h5 class="card-title">Total Students</h5>
-                <div class="text-center">
-                    <h3>{{ students|length }}</h3>
-                    <small>Registered Students</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+{% for department, dept_students in departments.items() %}
+<div class="department-section mb-4" data-department="{{ department }}">
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">{{ department }} Department</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Room</th>
+                            <th class="text-center">Breakfast</th>
+                            <th class="text-center">Lunch</th>
+                            <th class="text-center">Dinner</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in dept_students %}
+                        {% set student_attendance = attendance.get(student.id) %}
+                        <tr>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.room_number }}</td>
+                            <td class="text-center">
+                                {% if student_attendance and student_attendance.breakfast %}
+                                <span class="badge bg-success">Present</span>
+                                {% else %}
+                                <span class="badge bg-danger">Absent</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if student_attendance and student_attendance.lunch %}
+                                <span class="badge bg-success">Present</span>
+                                {% else %}
+                                <span class="badge bg-danger">Absent</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if student_attendance and student_attendance.dinner %}
+                                <span class="badge bg-success">Present</span>
+                                {% else %}
+                                <span class="badge bg-danger">Absent</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if student_attendance and student_attendance.leave_status %}
+                                <span class="badge bg-warning">On Leave</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Available</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <small>{{ dept_students|length }} students in {{ department }}</small>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Summary Cards -->
 <div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Today's Attendance Overview</h5>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th>Room</th>
-                                <th>Breakfast</th>
-                                <th>Lunch</th>
-                                <th>Dinner</th>
-                                <th>Leave Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for student in students %}
-                            {% set student_attendance = attendance|selectattr('user_id', 'equalto', student.id)|first %}
-                            <tr>
-                                <td>{{ student.name }}</td>
-                                <td>{{ student.room_number }}</td>
-                                <td>
-                                    {% if student_attendance and student_attendance.breakfast %}
-                                    <span class="text-success"><i class="fas fa-check"></i></span>
-                                    {% else %}
-                                    <span class="text-danger"><i class="fas fa-times"></i></span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if student_attendance and student_attendance.lunch %}
-                                    <span class="text-success"><i class="fas fa-check"></i></span>
-                                    {% else %}
-                                    <span class="text-danger"><i class="fas fa-times"></i></span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if student_attendance and student_attendance.dinner %}
-                                    <span class="text-success"><i class="fas fa-check"></i></span>
-                                    {% else %}
-                                    <span class="text-danger"><i class="fas fa-times"></i></span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if student_attendance and student_attendance.leave_status %}
-                                    <span class="badge bg-warning">On Leave</span>
-                                    {% else %}
-                                    <span class="badge bg-success">Available</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ departments|length }}</h2>
+                <p class="mb-0">Departments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ breakfast_count }}</h2>
+                <p class="mb-0">Breakfast</p>
+                <small>{{ ((breakfast_count / total_students) * 100)|round|int }}% of students</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ lunch_count }}</h2>
+                <p class="mb-0">Lunch</p>
+                <small>{{ ((lunch_count / total_students) * 100)|round|int }}% of students</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ dinner_count }}</h2>
+                <p class="mb-0">Dinner</p>
+                <small>{{ ((dinner_count / total_students) * 100)|round|int }}% of students</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card bg-secondary text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ total_students }}</h2>
+                <p class="mb-0">Total Students</p>
             </div>
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<script>
+// Department filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const filter = document.getElementById('departmentFilter');
+    if (filter) {
+        filter.addEventListener('change', function() {
+            const selectedDept = this.value;
+            document.querySelectorAll('.department-section').forEach(section => {
+                if (!selectedDept || section.dataset.department === selectedDept) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
+
+<style>
+.department-section {
+    transition: all 0.3s ease;
+}
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+}
+.card-header {
+    font-weight: 600;
+}
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+</style>
 {% endblock %}

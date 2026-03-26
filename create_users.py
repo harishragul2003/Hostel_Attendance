@@ -3,7 +3,8 @@ from datetime import datetime, time
 
 def create_test_users():
     with app.app_context():
-        # Create database tables
+        # Drop all tables and recreate them
+        db.drop_all()
         db.create_all()
         
         # Create admin user

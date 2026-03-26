@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Attendance Report for {{ student.name }}</h2>
+  <p>Period: {{ start_date }} to {{ end_date }}</p>
+  <h4>Summary</h4>
+  <ul>
+    <li>Total Days: {{ stats.total_days }}</li>
+    <li>Present Days: {{ stats.present_days }}</li>
+    <li>Leave Days: {{ stats.leave_days }}</li>
+    <li>Attendance Percentage: {{ "%.2f"|format(stats.attendance_percentage) }}%</li>
+  </ul>
+  <h4>Daily Attendance Details</h4>
+  <div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Breakfast</th>
+        <th>Lunch</th>
+        <th>Dinner</th>
+        <th>Leave Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.date }}</td>
+        <td>{{ 'Present' if record.breakfast else 'Absent' }}</td>
+        <td>{{ 'Present' if record.lunch else 'Absent' }}</td>
+        <td>{{ 'Present' if record.dinner else 'Absent' }}</td>
+        <td>
+          {% if record.leave_status %}
+            <span class="badge bg-warning">On Leave</span>
+          {% else %}
+            <span class="badge bg-success">Present</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

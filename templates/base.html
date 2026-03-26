@@ -143,6 +143,12 @@
                                     <i class="fas fa-list me-1"></i>Weekly Menu
                                 </a>
                             </li>
+                        {% elif current_user.role == 'student' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('weekly_menu') }}">
+                                    <i class="fas fa-list me-1"></i>Weekly Menu
+                                </a>
+                            </li>
                         {% endif %}
                     {% endif %}
                 </ul>

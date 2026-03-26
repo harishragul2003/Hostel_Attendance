@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Billing Report for {{ student.name }}</h2>
+  <p>Period: {{ start_date }} to {{ end_date }}</p>
+  <h4>Summary</h4>
+  <ul>
+    <li>Total Cost: ₹{{ "%.2f"|format(stats.total_cost) }}</li>
+    <li>Average Daily Cost: ₹{{ "%.2f"|format(stats.avg_daily_cost) }}</li>
+  </ul>
+  <h4>Daily Cost Details</h4>
+  <div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Daily Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.date }}</td>
+        <td>₹{{ "%.2f"|format(record.daily_cost) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}
