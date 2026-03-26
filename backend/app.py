@@ -5,16 +5,37 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from datetime import datetime, timedelta, time
 from sqlalchemy import case
 
-import os
-app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), '..', 'frontend', 'templates'))
-app.config['SECRET_KEY'] = 'your-secret-key'  # Change this to a secure key in production
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hostel.db'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
+DB_PATH = os.path.join(BASE_DIR, 'hostel.db')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + DB_PATH
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Initialize DB and default admin on startup (runs with gunicorn too)
+def init_db():
+    with app.app_context():
+        db.create_all()
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(
+                username='admin',
+                password='admin123',
+                role='admin',
+                name='Administrator',
+                department='Administration',
+                room_number='ADMIN'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print('Default admin created: admin / admin123')
 
 # Add Jinja2 template filters
 @app.template_filter('format_time')
@@ -66,6 +87,9 @@ class WeeklyMenu(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# Run DB init (works with both gunicorn and direct python)
+init_db()
 
 @app.context_processor
 def utility_processor():
@@ -769,23 +793,5 @@ def delete_weekly_menu(menu_id):
     return redirect(url_for('weekly_menu'))
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        
-        # Create default admin user if it doesn't exist
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
-            admin = User(
-                username='admin',
-                password='admin123',  # Change this in production!
-                role='admin',
-                name='Administrator',
-                room_number='ADMIN'
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print('Default admin user created!')
-            print('Username: admin')
-            print('Password: admin123')
-    
     app.run(debug=True)
+
