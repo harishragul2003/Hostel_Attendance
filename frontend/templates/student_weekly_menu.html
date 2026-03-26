@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h3>Weekly Menu Selection</h3>
+    <form method="POST" action="{{ url_for('weekly_menu') }}">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Breakfast</th>
+                    <th>Lunch</th>
+                    <th>Dinner</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for date in dates %}
+                {% set day_name = date.strftime('%A') %}
+                {% set day_menus = menus_by_day.get(day_name, {}) %}
+                <tr>
+                    <td>{{ date.strftime('%Y-%m-%d') }} ({{ day_name }})</td>
+                    {% for meal in ['breakfast','lunch','dinner'] %}
+                    <td>
+                        {% set m = day_menus.get(meal) %}
+                        {% if m %}
+                            <div>{{ m.description }} - ₹{{ '%.2f'|format(m.cost) }}</div>
+                        {% else %}
+                            <em>No menu</em>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>
+{% endblock %}

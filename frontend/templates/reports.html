@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="card-title">
+                        <i class="fas fa-file-invoice me-2"></i>Student Billing Report
+                    </h5>
+                    <a href="{{ url_for('calculate_bills') }}" class="btn btn-success">
+                        <i class="fas fa-calculator me-2"></i>Update Bills
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>
+                                    <i class="fas fa-user me-2"></i>Name
+                                </th>
+                                <th>
+                                    <i class="fas fa-home me-2"></i>Room
+                                </th>
+                                <th>
+                                    <i class="fas fa-rupee-sign me-2"></i>Total Bill
+                                </th>
+                                <th>
+                                    <i class="fas fa-clock me-2"></i>Last Updated
+                                </th>
+                                <th class="text-center">
+                                    <i class="fas fa-file-alt me-2"></i>Reports
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="student-avatar me-2">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
+                                        {{ student.name }}
+                                    </div>
+                                </td>
+                                <td>{{ student.room_number }}</td>
+                                <td>₹{{ "%.2f"|format(student.total_bill) }}</td>
+                                <td>
+                                    {% if student.last_bill_date %}
+                                        <span class="date-badge">
+                                            <i class="far fa-calendar-alt me-1"></i>
+                                            {{ student.last_bill_date.strftime('%Y-%m-%d') }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">
+                                            <i class="fas fa-minus me-1"></i>Never
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <!-- Monthly Report Button -->
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                title="Monthly Report"
+                                                onclick="window.location.href='{{ url_for('generate_report', student_id=student.id, report_type='monthly') | safe }}'">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </button>
+                                        
+                                        <!-- Detailed Report Button -->
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#detailsModal{{ student.id }}"
+                                                title="Detailed Report">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                        
+                                        <!-- Attendance Report Button -->
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                title="Attendance Report"
+                                                onclick="window.location.href='{{ url_for('generate_report', student_id=student.id, report_type='attendance') | safe }}'">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                        
+                                        <!-- Bill Report Button -->
+                                        <button class="btn btn-sm btn-outline-warning" 
+                                                title="Bill Report"
+                                                onclick="window.location.href='{{ url_for('generate_report', student_id=student.id, report_type='bill') | safe }}'">
+                                            <i class="fas fa-file-invoice-dollar"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Details Modal -->
+                            <div class="modal fade" id="detailsModal{{ student.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Billing Details - {{ student.name }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <!-- Statistics Summary -->
+                                            <div class="row mb-4">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">Attendance Summary</h6>
+                                                    <div class="mb-3">
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span>Total Days Recorded:</span>
+                                                            <strong>{{ student.stats.total_days }}</strong>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span>Leave Days:</span>
+                                                            <strong>{{ student.stats.leave_days }}</strong>
+                                                        </div>
+                                                    </div>
+                                                    <table class="table table-sm">
+                                                        <tr>
+                                                            <td>Total Days</td>
+                                                            <td>{{ student.stats.total_days }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Days on Leave</td>
+                                                            <td>{{ student.stats.leave_days }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Breakfast Attendance</td>
+                                                            <td>{{ student.stats.breakfast_count }} days</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Lunch Attendance</td>
+                                                            <td>{{ student.stats.lunch_count }} days</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Dinner Attendance</td>
+                                                            <td>{{ student.stats.dinner_count }} days</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">Cost Breakdown</h6>
+                                                    <table class="table table-sm">
+                                                        <tr>
+                                                            <td>Breakfast Total</td>
+                                                            <td>₹{{ "%.2f"|format(student.stats.breakfast_cost) }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Lunch Total</td>
+                                                            <td>₹{{ "%.2f"|format(student.stats.lunch_cost) }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Dinner Total</td>
+                                                            <td>₹{{ "%.2f"|format(student.stats.dinner_cost) }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Total Cost</td>
+                                                            <td>₹{{ "%.2f"|format(student.stats.total_cost) }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Average Daily Cost</td>
+                                                            <td>₹{{ "%.2f"|format(student.stats.avg_daily_cost) }}</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <!-- Daily Records -->
+                                            <h6 class="mb-3">Daily Attendance Records</h6>
+                                            <div class="table-responsive">
+                                                <table class="table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Date</th>
+                                                            <th>Breakfast</th>
+                                                            <th>Lunch</th>
+                                                            <th>Dinner</th>
+                                                            <th>Leave Status</th>
+                                                            <th>Daily Cost</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for record in student.attendance|sort(attribute='date', reverse=true) %}
+                                                        <tr>
+                                                            <td>{{ record.date.strftime('%Y-%m-%d') }}</td>
+                                                            <td>
+                                                                {% if record.breakfast %}
+                                                                <span class="text-success">Present</span>
+                                                                {% else %}
+                                                                <span class="text-danger">Absent</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if record.lunch %}
+                                                                <span class="text-success">Present</span>
+                                                                {% else %}
+                                                                <span class="text-danger">Absent</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if record.dinner %}
+                                                                <span class="text-success">Present</span>
+                                                                {% else %}
+                                                                <span class="text-danger">Absent</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if record.leave_status %}
+                                                                <span class="badge bg-warning">On Leave</span>
+                                                                {% else %}
+                                                                <span class="badge bg-success">Present</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>₹{{ "%.2f"|format(record.daily_cost) }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .student-avatar {
+        width: 32px;
+        height: 32px;
+        background: rgba(var(--primary-color-rgb), 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary-color);
+        font-size: 1.2rem;
+    }
+
+    .date-badge {
+        background: rgba(var(--primary-color-rgb), 0.05);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #4b5563;
+    }
+
+    .btn {
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn i {
+        transition: transform 0.2s ease;
+    }
+
+    .btn:hover i {
+        transform: scale(1.1);
+    }
+
+    /* Report button colors */
+    .btn-outline-primary {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+    .btn-outline-primary:hover {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .btn-outline-info {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+    .btn-outline-info:hover {
+        background-color: var(--accent-color);
+        color: white;
+    }
+
+    .btn-outline-success {
+        border-color: #10b981;
+        color: #10b981;
+    }
+    .btn-outline-success:hover {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .btn-outline-warning {
+        border-color: #f59e0b;
+        color: #f59e0b;
+    }
+    .btn-outline-warning:hover {
+        background-color: #f59e0b;
+        color: white;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #4b5563;
+        border-bottom-width: 2px;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}

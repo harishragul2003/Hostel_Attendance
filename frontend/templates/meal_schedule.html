@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Configure Meal Schedules</h5>
+                <form method="POST" action="{{ url_for('meal_schedule') }}">
+                    <div class="mb-3">
+                        <label for="meal_type" class="form-label">Meal Type</label>
+                        <select class="form-select" id="meal_type" name="meal_type" required>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="start_time" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_time" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Save Schedule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Current Schedules</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Meal</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Cost (₹)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.meal_type|title }}</td>
+                                <td>{{ schedule.start_time.strftime('%I:%M %p') }}</td>
+                                <td>{{ schedule.end_time.strftime('%I:%M %p') }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('update_meal_cost', schedule_id=schedule.id) }}" class="d-flex align-items-center">
+                                        <input type="number" name="cost" value="{{ schedule.cost }}" class="form-control form-control-sm me-2" style="width: 80px;" step="0.01" min="0" required>
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editModal{{ schedule.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not schedules %}
+                            <tr>
+                                <td colspan="5" class="text-center">No schedules configured yet</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Calculate Bills Button -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-end">
+            <a href="{{ url_for('calculate_bills') }}" class="btn btn-success">
+                <i class="fas fa-calculator me-2"></i>Calculate Student Bills
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

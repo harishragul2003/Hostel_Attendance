@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title text-center mb-4">
+                    <i class="fas fa-user-plus me-2"></i>Student Registration
+                </h4>
+                
+                {# Display flash messages #}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" class="needs-validation" novalidate autocomplete="off">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   value="{{ form_data.username if form_data else '' }}" required>
+                            <div class="invalid-feedback">
+                                Please choose a username.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="invalid-feedback">
+                                Please provide a password.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ form_data.name if form_data else '' }}" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                            <select class="form-select" id="department" name="department" required>
+                                <option value="" disabled {% if not form_data or not form_data.department %}selected{% endif %}>Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept }}" {% if form_data and form_data.department == dept %}selected{% endif %}>
+                                    {{ dept }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="year" class="form-label">Year <span class="text-danger">*</span></label>
+                            <select class="form-select" id="year" name="year" required>
+                                <option value="" disabled {% if not form_data or not form_data.year %}selected{% endif %}>Select Year</option>
+                                {% for y in years %}
+                                <option value="{{ y }}" {% if form_data and form_data.year|string == y|string %}selected{% endif %}>
+                                    {{ y }} Year
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="room_number" class="form-label">Room Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="room_number" name="room_number" 
+                               value="{{ form_data.room_number if form_data else '' }}" required>
+                        <div class="form-text">Example: A-101, B-205, etc.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-2"></i>Register
+                        </button>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-sign-in-alt me-2"></i>Back to Login
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function () {
+    'use strict'
+    
+    // Fetch all the forms we want to apply custom Bootstrap validation styles to
+    var forms = document.querySelectorAll('.needs-validation')
+    
+    // Loop over them and prevent submission
+    Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+})()
+
+// Auto-hide flash messages after 5 seconds
+setTimeout(function() {
+    var alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        var bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+    });
+}, 5000);
+</script>
+
+<style>
+.form-label {
+    font-weight: 500;
+}
+.invalid-feedback {
+    font-size: 0.85em;
+}
+.alert {
+    margin-bottom: 1.5rem;
+}
+</style>
+{% endblock %}
