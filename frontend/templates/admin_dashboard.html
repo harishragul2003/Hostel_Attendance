@@ -122,7 +122,7 @@
             <div class="card-body text-center">
                 <h2 class="mb-0">{{ breakfast_count }}</h2>
                 <p class="mb-0">Breakfast</p>
-                <small>{{ ((breakfast_count / total_students) * 100)|round|int }}% of students</small>
+                <small>{{ ((breakfast_count / total_students * 100)|round|int) if total_students > 0 else 0 }}% of students</small>
             </div>
         </div>
     </div>
@@ -131,7 +131,7 @@
             <div class="card-body text-center">
                 <h2 class="mb-0">{{ lunch_count }}</h2>
                 <p class="mb-0">Lunch</p>
-                <small>{{ ((lunch_count / total_students) * 100)|round|int }}% of students</small>
+                <small>{{ ((lunch_count / total_students * 100)|round|int) if total_students > 0 else 0 }}% of students</small>
             </div>
         </div>
     </div>
@@ -140,7 +140,7 @@
             <div class="card-body text-center">
                 <h2 class="mb-0">{{ dinner_count }}</h2>
                 <p class="mb-0">Dinner</p>
-                <small>{{ ((dinner_count / total_students) * 100)|round|int }}% of students</small>
+                <small>{{ ((dinner_count / total_students * 100)|round|int) if total_students > 0 else 0 }}% of students</small>
             </div>
         </div>
     </div>
